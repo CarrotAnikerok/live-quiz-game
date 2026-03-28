@@ -1,11 +1,13 @@
 import { WebSocketServer } from 'ws';
-import { Game, WSMessage } from './types';
+import { Game, Player, User, WSMessage } from './types';
 import { registerPlayer } from './Commands/player';
 import { getCreateGameAnswer, getJoinGameAnswers, getUpdatePlayersAnswer} from './Commands/gameManagement';
-import { getStartGameAnswer } from './Commands/gamePlay';
-import { getGameByCode, getGameById, getUserById, leaveGame } from './utils/utils'
+import { getNextQuestionAnswer, getQuestionResult, getStartGameAnswer, getSubmitAnswer } from './Commands/gamePlay';
+import { getGameByCode, getGameById, getUserById, getUserBySocket, leaveGame } from './utils/utils'
+import { QuestionGame } from './database/QuestionGame';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const showResultsTime = 5000;
 
 // WebSocket server
 const wss = new WebSocketServer({ port: PORT });
@@ -15,9 +17,9 @@ wss.on('connection', socket => {
     socket.on('message', (message: string) => {
         const messageParsed = JSON.parse(message);
         let answer: WSMessage;
-        let game: Game;
+        let game: QuestionGame;
+        let user: User;
 
-        //TODO: разделить вызовы в контроллер или вроде того
         switch(messageParsed.type) {
             case 'reg':
                 answer = registerPlayer(messageParsed.data, socket);
@@ -44,15 +46,32 @@ wss.on('connection', socket => {
                 })
                 break;
             case 'start_game':
-                game = getGameById(messageParsed.data);
+                game = getGameById(messageParsed.data.gameId);
                 answer = getStartGameAnswer(game);
 
                 socket.send(JSON.stringify(answer));
+                console.log('Timelimit is ' + game.questions[game.currentQuestion].timeLimitSec)
+                game.questionTimer = setTimerForQuestion(game);
 
                 game.players.forEach(player => {
                     player.ws.send(JSON.stringify(answer));
                 })
 
+                break;
+            case 'answer': 
+                answer = getSubmitAnswer(messageParsed.data, socket);
+                socket.send(JSON.stringify(answer));
+
+                game = getGameById(messageParsed.data.gameId);
+
+                console.log('is all? ' + game.isAllAnswered());
+
+                if (game.isAllAnswered()) {
+                    game.questionTimer?.close();
+                    sendQuestionResult(game);
+                } 
+
+                
         }
     })
 
@@ -70,3 +89,32 @@ wss.on('connection', socket => {
         }
     })
 })
+
+
+// нужжно обнулять значения для челов при начале нового вопроса
+// все таки где-то есть цикл, надо его убрать
+function setTimerForQuestion(game: QuestionGame) {
+    return setTimeout(() => {
+        sendQuestionResult(game);
+    }, game.questions[game.currentQuestion].timeLimitSec * 1000)
+}
+
+function sendQuestionResult(game: QuestionGame) {
+    const host = getUserById(game.hostId);
+    host?.ws.send(JSON.stringify(getQuestionResult(game)));
+    game.players.forEach(player => {
+        player.ws.send(JSON.stringify(getQuestionResult(game)))
+    })
+
+    setTimeout(() => {
+        const nextQuestionAnswer = getNextQuestionAnswer(game);
+        game.players.forEach(player => {
+            if (nextQuestionAnswer.type === 'question') {
+                game.questionTimer = setTimerForQuestion(game);
+            }
+
+            host?.ws.send(JSON.stringify(nextQuestionAnswer));
+            player.ws.send(JSON.stringify(nextQuestionAnswer));
+        })
+    }, showResultsTime)
+}

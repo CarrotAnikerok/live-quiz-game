@@ -18,12 +18,23 @@ export class UserStorage {
         return user;
     }
 
-    getUserBySocket(socket: WebSocket) {
-        return this.storage.find(user => user.ws === socket);
+    getUserBySocket(socket: WebSocket): User {
+        const user = this.storage.find(user => user.ws === socket)
+
+        if (!user) {
+            throw Error('User is not found');
+        }
+        return user;
     }
 
-    getUserById(id: string): User | undefined {
-        return this.storage.find(user => user.index === id);
+    getUserById(id: string): User {
+        const user = this.storage.find(user => user.index === id)
+
+        if (!user) {
+            throw Error('User is not found');
+        }
+
+        return user;
     }
 
     getUserByData(data: RegData): User | undefined {
