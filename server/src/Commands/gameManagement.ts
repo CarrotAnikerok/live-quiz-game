@@ -7,6 +7,10 @@ export function getGame(data: JoinGameData): Game {
     return gameStorage.getGame(data.code);
 }
 
+export function leaveGame(socket: WebSocket): Game | undefined {
+    return gameStorage.leaveGameByPlayerSocket(socket);
+}
+
 export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WSMessage {
     const currentUser = userStorage.getUserBySocket(socket);
 
@@ -37,10 +41,10 @@ export function getJoinGameAnswers(data: JoinGameData, socket: WebSocket): WSMes
         name: joinedUser.name,
         index: joinedUser.index,
         score: 0,
-        ws: joinedUser.ws
+        ws: joinedUser.ws,
     }
 
-    const joinedGame = gameStorage.joinGame(data.code, player);
+    const joinedGame: Game = gameStorage.joinGame(data.code, player);
 
     if (typeof joinedGame === 'string') {
         throw Error('Game is not found');

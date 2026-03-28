@@ -1,7 +1,7 @@
 import { WebSocketServer } from 'ws';
-import { WSMessage } from './types';
+import { Game, WSMessage } from './types';
 import { registerPlayer } from './Commands/player';
-import { getCreateGameAnswer, getGame, getJoinGameAnswers, getUpdatePlayersAnswer } from './Commands/gameManagement';
+import { getCreateGameAnswer, getGame, getJoinGameAnswers, getUpdatePlayersAnswer, leaveGame } from './Commands/gameManagement';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -35,6 +35,17 @@ wss.on('connection', socket => {
                     player.ws.send(JSON.stringify(getUpdatePlayersAnswer(game.players)));
                 })
                 break;
+        }
+    })
+
+    socket.on('close', () => {
+        console.log(`Client DISCONNECTED. Total clients: ${wss.clients.size}`);
+        const runningGame: Game | undefined = leaveGame(socket);
+
+        if (runningGame) {
+            runningGame.players.forEach(player => {
+                player.ws.send(JSON.stringify(getUpdatePlayersAnswer(runningGame.players)));
+            });
         }
     })
 })
