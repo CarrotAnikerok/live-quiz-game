@@ -1,7 +1,9 @@
 import { WebSocketServer } from 'ws';
 import { Game, WSMessage } from './types';
 import { registerPlayer } from './Commands/player';
-import { getCreateGameAnswer, getGame, getJoinGameAnswers, getUpdatePlayersAnswer, leaveGame } from './Commands/gameManagement';
+import { getCreateGameAnswer, getJoinGameAnswers, getUpdatePlayersAnswer} from './Commands/gameManagement';
+import { getStartGameAnswer } from './Commands/gamePlay';
+import { getGameByCode, getGameById, getUserById, leaveGame } from './utils/utils'
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
@@ -13,6 +15,7 @@ wss.on('connection', socket => {
     socket.on('message', (message: string) => {
         const messageParsed = JSON.parse(message);
         let answer: WSMessage;
+        let game: Game;
 
         //TODO: разделить вызовы в контроллер или вроде того
         switch(messageParsed.type) {
@@ -29,12 +32,27 @@ wss.on('connection', socket => {
                 answer = answers[0];
                 socket.send(JSON.stringify(answer));
 
-                const game = getGame(messageParsed.data);
+                game = getGameByCode(messageParsed.data);
+                // это бы сократить
+                const host = getUserById(game.hostId);
+                host?.ws.send(JSON.stringify(answers[1]));
+                host?.ws.send(JSON.stringify(getUpdatePlayersAnswer(game.players)));
+
                 game.players.forEach(player => {
                     player.ws.send(JSON.stringify(answers[1]));
                     player.ws.send(JSON.stringify(getUpdatePlayersAnswer(game.players)));
                 })
                 break;
+            case 'start_game':
+                game = getGameById(messageParsed.data);
+                answer = getStartGameAnswer(game);
+
+                socket.send(JSON.stringify(answer));
+
+                game.players.forEach(player => {
+                    player.ws.send(JSON.stringify(answer));
+                })
+
         }
     })
 
@@ -43,6 +61,9 @@ wss.on('connection', socket => {
         const runningGame: Game | undefined = leaveGame(socket);
 
         if (runningGame) {
+            const host = getUserById(runningGame.hostId);
+            host?.ws.send(JSON.stringify(getUpdatePlayersAnswer(runningGame.players)));
+            
             runningGame.players.forEach(player => {
                 player.ws.send(JSON.stringify(getUpdatePlayersAnswer(runningGame.players)));
             });

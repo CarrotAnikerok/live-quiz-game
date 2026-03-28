@@ -1,15 +1,7 @@
 
 import { WebSocket } from 'ws';
 import { gameStorage, userStorage } from '../database/data';
-import { CreateGameData, Game, JoinGameData, Player, WSMessage } from '../types';
-
-export function getGame(data: JoinGameData): Game {
-    return gameStorage.getGame(data.code);
-}
-
-export function leaveGame(socket: WebSocket): Game | undefined {
-    return gameStorage.leaveGameByPlayerSocket(socket);
-}
+import { CreateGameData, Game, JoinGameData, Player, StartGameData, WSMessage } from '../types';
 
 export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WSMessage {
     const currentUser = userStorage.getUserBySocket(socket);

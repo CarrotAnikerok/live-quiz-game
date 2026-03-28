@@ -3,7 +3,7 @@ import { Game, Player, Question } from "../types";
 import { WebSocket } from 'ws';
 
 export class GameStorage {
-    storage: Map<string, Game> = new Map();
+    storage: Game[] = [];
 
     addGame(questions: Question[], hostId: string) {
         const game: Game = {
@@ -17,29 +17,20 @@ export class GameStorage {
             playerAnswers: new Map()
         }
 
-        this.storage.set(game.code, game);
+        this.storage.push(game);
 
         return game;
     }
 
     joinGame(code: string, player: Player): Game {
-        const game = this.getGame(code);
+        const game = this.getGameByCode(code);
         game.players.push(player);
         return game;
     }
 
-    getGame(code: string): Game {
-        const game = this.storage.get(code);
-
-        if (!game) {
-            throw Error('Game is not found');
-        }
-
-        return game;
-    }
-
     leaveGameByPlayerSocket(socket: WebSocket): Game | undefined {
-        const playersArrays: [Game, Player[]][] = [...this.storage.values()].map(game => [game, game.players]);
+        const playersArrays: [Game, Player[]][] = this.storage.map(game => [game, game.players]);
+
         for (const players of playersArrays) {
             const foundPlayer = players[1].find(player => player.ws === socket);
 
@@ -52,6 +43,26 @@ export class GameStorage {
 
         return;
     } 
+
+    getGameByCode(code: string): Game {
+        const game = this.storage.find(game => game.code === code);
+
+        if (!game) {
+            throw Error('Game is not found');
+        }
+
+        return game;
+    }
+
+    getGameById(id: string): Game {
+        const game = this.storage.find(game => game.id === id);
+
+        if (!game) {
+            throw Error('Game is not found');
+        }
+
+        return game;
+    }
 
     #generateCode(): string {
         return Array.apply(0, Array(6)).map(function() {
