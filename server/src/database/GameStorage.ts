@@ -22,14 +22,18 @@ export class GameStorage {
     }
 
     joinGame(code: string, player: Player): Game | string {
+        const game = this.getGame(code);
+        game.players.push(player);
+        return game;
+    }
+
+    getGame(code: string): Game {
         const game = this.games.get(code);
 
-        // добавить ошибку если игры не существует
         if (!game) {
-            return 'Game is not found';
+            throw Error('Game is not found');
         }
-        
-        game.players.push(player);
+
         return game;
     }
 
