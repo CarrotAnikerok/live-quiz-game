@@ -1,7 +1,6 @@
 import { randomUUID } from "crypto";
 import { Game, Player, Question } from "../types";
 
-
 export class QuestionGame implements Game {
     id: string;
     code: string;
@@ -38,6 +37,7 @@ export class QuestionGame implements Game {
             return;
         }
 
+        this.questionStartTime = new Date().getUTCSeconds();
         return this.questions[this.currentQuestion];
     }
 
@@ -56,10 +56,13 @@ export class QuestionGame implements Game {
         player.hasAnswered = true;
         player.answerTime = answerTime;
         player.answeredCorrectly = answerId === this.getCorrectAnswer();
-        console.log(`correct answer is ${this.getCorrectAnswer()} and user answer is ${answerId}`);
-        console.log(`is player answered: ${player.hasAnswered} and is correct ${player.answeredCorrectly} and answertime is ${player.answerTime}`);
 
         this.playerAnswers.set(playerId, { answerIndex: answerId, timestamp: answerTime })
+    }
+
+    emptyPlayerAnswer(player: Player) {
+        player.hasAnswered = false;
+        player.answeredCorrectly = false;
     }
 
     getPlayer(playerId: string): Player {

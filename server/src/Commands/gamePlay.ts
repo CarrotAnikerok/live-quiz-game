@@ -1,5 +1,4 @@
-import { AnswerData, Game, WSMessage } from "../types";
-import { gameStorage, userStorage } from '../database/data';
+import { AnswerData, WSMessage } from "../types";
 import { WebSocket } from 'ws';
 import { getGameById, getUserBySocket } from "../utils/utils";
 import { QuestionGame } from "../database/QuestionGame";
@@ -12,7 +11,7 @@ export function getStartGameAnswer(game: QuestionGame): WSMessage {
     return {
         type: 'question',
         data: {
-            questionNumber: game.currentQuestion,
+            questionNumber: game.currentQuestion + 1,
             totalQuestions: game.questions.length,
             text: game.questions[game.currentQuestion].text, 
             options: game.questions[game.currentQuestion].options,
@@ -23,7 +22,6 @@ export function getStartGameAnswer(game: QuestionGame): WSMessage {
 }
 
 export function getNextQuestionAnswer(game: QuestionGame): WSMessage {
-    // наверное вызывать некст квештен для каждого игрока не очень хорошо уву
     const question = game.nextQuestion();
 
     if (!question) {
@@ -44,7 +42,7 @@ export function getNextQuestionAnswer(game: QuestionGame): WSMessage {
     return {
         type: 'question',
         data: {
-            questionNumber: game.currentQuestion,
+            questionNumber: game.currentQuestion + 1,
             totalQuestions: game.questions.length,
             text: question.text, 
             options: question.options,
@@ -88,13 +86,16 @@ export function getQuestionResult(game: QuestionGame): WSMessage {
         }
 
         if (player.answeredCorrectly) {
-            const points = basePoints * ((currentQuestion.timeLimitSec - player.answerTime) / currentQuestion.timeLimitSec);
+            const points = Math.round(basePoints * ((currentQuestion.timeLimitSec - player.answerTime) / currentQuestion.timeLimitSec));
+            console.log(`${player.name} points for this task is ${points}`);
+            console.log(`current timelimit is ${currentQuestion.timeLimitSec} and player answer time id ${player.answerTime}`)
             player.score += points;
             result.pointsEarned = points;
             result.totalScore = player.score;
         }
 
         playerResults.push(result);
+        game.emptyPlayerAnswer(player);
     }
 
     return {
