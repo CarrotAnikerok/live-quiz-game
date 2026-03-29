@@ -6,13 +6,8 @@ import { answerTypes } from '../utils/constants';
 
 export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WSMessage {
     const currentUser = userStorage.getUserBySocket(socket);
-
-    // сохранить ошибки в одно место
-    if (!currentUser) {
-        throw Error('User is not found');
-    }
-
     const game = gameStorage.addGame(data.questions, currentUser.index);
+    
     return {
             type: answerTypes.gameCreated,
             data: {
@@ -25,10 +20,6 @@ export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WS
 
 export function getJoinGameAnswers(data: JoinGameData, socket: WebSocket): WSMessage[] {
     const joinedUser = userStorage.getUserBySocket(socket);
-
-    if (!joinedUser) {
-        throw Error('User is not found');
-    }
 
     const player: Player = {
         name: joinedUser.name,

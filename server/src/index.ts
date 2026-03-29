@@ -34,10 +34,12 @@ wss.on('connection', socket => {
                     const answers: WSMessage[] = getJoinGameAnswers(messageParsed.data, socket);
                     answer = answers[0];
                     socket.send(JSON.stringify(answer));
-
-                    game = getGameByCode(messageParsed.data);
-                    broadcastToAllInGame(game, answers[1]);
-                    broadcastToAllInGame(game, getUpdatePlayersAnswer(game.players));
+                    // fix for fronted bag
+                    setTimeout(() => {
+                        game = getGameByCode(messageParsed.data);
+                        broadcastToAllInGame(game, answers[1]);
+                        broadcastToAllInGame(game, getUpdatePlayersAnswer(game.players));
+                    }, 30)
                 } catch (e){
                     if (e instanceof GameNotFound) {
                         answer = getErrorAnswer(requestTypes.registration, e.name);
