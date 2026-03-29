@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { Game, Player, Question } from "../types";
+import { MILLISECONDS_IN_SECOND } from "../utils/constants";
 
 export class QuestionGame implements Game {
     id: string;
@@ -26,7 +27,7 @@ export class QuestionGame implements Game {
 
     start() {
         this.status = 'in_progress';
-        this.questionStartTime = new Date().getUTCSeconds();
+        this.questionStartTime = Math.floor(Date.now() / MILLISECONDS_IN_SECOND);
     }
 
     nextQuestion(): Question | undefined {
@@ -37,7 +38,7 @@ export class QuestionGame implements Game {
             return;
         }
 
-        this.questionStartTime = new Date().getUTCSeconds();
+        this.questionStartTime = Math.floor(Date.now() / MILLISECONDS_IN_SECOND);
         return this.questions[this.currentQuestion];
     }
 
@@ -50,7 +51,7 @@ export class QuestionGame implements Game {
             return;
         }
 
-        const answerTime = new Date().getUTCSeconds() - this.questionStartTime;
+        const answerTime = Math.floor(Date.now() / MILLISECONDS_IN_SECOND) - this.questionStartTime;
         const player = this.getPlayer(playerId);
 
         if (!player) {

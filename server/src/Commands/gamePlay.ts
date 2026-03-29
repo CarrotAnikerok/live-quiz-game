@@ -79,7 +79,7 @@ export function getQuestionResult(game: QuestionGame): WSMessage {
             totalScore: player.score,
         }
 
-        if (!player.hasAnswered || !player.answerTime) {
+        if (!player.hasAnswered || player.answerTime === undefined) {
             playerResults.push(result);
             continue;
         }
