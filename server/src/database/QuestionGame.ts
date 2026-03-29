@@ -45,13 +45,17 @@ export class QuestionGame implements Game {
         return !this.players.find(player => !player.hasAnswered);
     }
 
-    setPlayerAnswer(playerId: string, answerId: number) {
+    setPlayerAnswer(playerId: string, answerId: number): void {
         if (!this.questionStartTime) {
             return;
         }
 
         const answerTime = new Date().getUTCSeconds() - this.questionStartTime;
         const player = this.getPlayer(playerId);
+
+        if (!player) {
+            return;
+        }
         
         player.hasAnswered = true;
         player.answerTime = answerTime;
@@ -65,13 +69,8 @@ export class QuestionGame implements Game {
         player.answeredCorrectly = false;
     }
 
-    getPlayer(playerId: string): Player {
+    getPlayer(playerId: string): Player | undefined {
         const player = this.players.find(player => player.index === playerId);
-
-        if (!player) {
-            throw ('Player is not found');
-        }
-
         return player
     }
 

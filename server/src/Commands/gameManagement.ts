@@ -1,7 +1,8 @@
 
 import { WebSocket } from 'ws';
 import { gameStorage, userStorage } from '../database/data';
-import { CreateGameData, Game, JoinGameData, Player, StartGameData, WSMessage } from '../types';
+import { CreateGameData, Game, JoinGameData, Player, WSMessage } from '../types';
+import { answerTypes } from '../utils/constants';
 
 export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WSMessage {
     const currentUser = userStorage.getUserBySocket(socket);
@@ -13,7 +14,7 @@ export function getCreateGameAnswer(data: CreateGameData, socket: WebSocket): WS
 
     const game = gameStorage.addGame(data.questions, currentUser.index);
     return {
-            type: 'game_created',
+            type: answerTypes.gameCreated,
             data: {
                 gameId: game.id,
                 code: game.code,
@@ -37,13 +38,8 @@ export function getJoinGameAnswers(data: JoinGameData, socket: WebSocket): WSMes
     }
 
     const joinedGame: Game = gameStorage.joinGame(data.code, player);
-
-    if (typeof joinedGame === 'string') {
-        throw Error('Game is not found');
-    }
-
     const personalAnswer: WSMessage = {
-        type: 'game_joined',
+        type: answerTypes.gameJoined,
         data: {
             gameId: joinedGame.id
         },
@@ -51,7 +47,7 @@ export function getJoinGameAnswers(data: JoinGameData, socket: WebSocket): WSMes
     }
 
     const broadcastAnswer: WSMessage = {
-        type: 'player_joined',
+        type: answerTypes.playerJoined,
         data: {
             playerName: player.name,
             playerCount: joinedGame.players.length,
@@ -62,14 +58,13 @@ export function getJoinGameAnswers(data: JoinGameData, socket: WebSocket): WSMes
     return [personalAnswer, broadcastAnswer];
 }
 
-//запускать когда игрок присоединяется и уходит
 export function getUpdatePlayersAnswer(players: Player[]): WSMessage  {
     const playersToSend = players.map(player => {
         return {name: player.name, index: player.index, score: player.score};
     });
 
     return {
-        type: 'update_players',
+        type: answerTypes.updatePlayers,
         data: playersToSend,
         id: 0
     }

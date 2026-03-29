@@ -1,7 +1,18 @@
 import { gameStorage, userStorage } from "../database/data";
 import { QuestionGame } from "../database/QuestionGame";
-import { Game, JoinGameData, StartGameData, User } from "../types";
+import { JoinGameData, User } from "../types";
 import { WebSocket } from 'ws';
+
+export function getErrorAnswer(type: string, errorText: string) {
+    return {
+        type,
+        data: {
+            error: true,
+            errorText
+        },
+        id: 0
+    }
+}
 
 export function getUserBySocket(socket: WebSocket): User {
     return userStorage.getUserBySocket(socket);

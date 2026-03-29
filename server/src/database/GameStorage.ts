@@ -1,6 +1,7 @@
 import { Player, Question } from "../types";
 import { WebSocket } from 'ws';
 import { QuestionGame } from "./QuestionGame";
+import { GameNotFound } from "../utils/errors";
 
 export class GameStorage {
     storage: QuestionGame[] = [];
@@ -13,7 +14,32 @@ export class GameStorage {
 
     joinGame(code: string, player: Player): QuestionGame {
         const game = this.getGameByCode(code);
+        
+        if (!game) {
+            throw new GameNotFound();
+        }
+
         game.players.push(player);
+        return game;
+    }
+
+    getGameByCode(code: string): QuestionGame {
+        const game = this.storage.find(game => game.code === code);
+
+        if (!game) {
+            throw new GameNotFound();
+        }
+
+        return game;
+    }
+
+    getGameById(id: string): QuestionGame {
+        const game = this.storage.find(game => game.id === id);
+
+        if (!game) {
+            throw new GameNotFound();
+        }
+
         return game;
     }
 
@@ -32,24 +58,4 @@ export class GameStorage {
 
         return;
     } 
-
-    getGameByCode(code: string): QuestionGame {
-        const game = this.storage.find(game => game.code === code);
-
-        if (!game) {
-            throw Error('Game is not found');
-        }
-
-        return game;
-    }
-
-    getGameById(id: string): QuestionGame {
-        const game = this.storage.find(game => game.id === id);
-
-        if (!game) {
-            throw Error('Game is not found');
-        }
-
-        return game;
-    }
 }

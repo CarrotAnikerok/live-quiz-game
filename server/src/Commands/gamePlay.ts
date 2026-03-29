@@ -2,14 +2,13 @@ import { AnswerData, WSMessage } from "../types";
 import { WebSocket } from 'ws';
 import { getGameById, getUserBySocket } from "../utils/utils";
 import { QuestionGame } from "../database/QuestionGame";
-
-const basePoints = 1000;
+import { answerTypes, BASE_POINTS } from "../utils/constants";
 
 export function getStartGameAnswer(game: QuestionGame): WSMessage {
     game.start();
 
     return {
-        type: 'question',
+        type: answerTypes.question,
         data: {
             questionNumber: game.currentQuestion + 1,
             totalQuestions: game.questions.length,
@@ -31,7 +30,7 @@ export function getNextQuestionAnswer(game: QuestionGame): WSMessage {
         })
 
         return {
-            type: 'game_finished',
+            type: answerTypes.gameFinished,
             data: {
                 scoreboard: resultPlayers,
             },
@@ -40,7 +39,7 @@ export function getNextQuestionAnswer(game: QuestionGame): WSMessage {
     }
     
     return {
-        type: 'question',
+        type: answerTypes.question,
         data: {
             questionNumber: game.currentQuestion + 1,
             totalQuestions: game.questions.length,
@@ -59,7 +58,7 @@ export function getSubmitAnswer(data: AnswerData, socket: WebSocket): WSMessage 
     game.setPlayerAnswer(user.index, data.answerIndex);
 
     return {
-        type: 'answer_accepted',
+        type: answerTypes.answerAccepted,
         data: {
             questionIndex: data.answerIndex,
         },
@@ -86,9 +85,7 @@ export function getQuestionResult(game: QuestionGame): WSMessage {
         }
 
         if (player.answeredCorrectly) {
-            const points = Math.round(basePoints * ((currentQuestion.timeLimitSec - player.answerTime) / currentQuestion.timeLimitSec));
-            console.log(`${player.name} points for this task is ${points}`);
-            console.log(`current timelimit is ${currentQuestion.timeLimitSec} and player answer time id ${player.answerTime}`)
+            const points = Math.round(BASE_POINTS * ((currentQuestion.timeLimitSec - player.answerTime) / currentQuestion.timeLimitSec));
             player.score += points;
             result.pointsEarned = points;
             result.totalScore = player.score;
@@ -99,12 +96,12 @@ export function getQuestionResult(game: QuestionGame): WSMessage {
     }
 
     return {
-        type: "question_result",
+        type: answerTypes.questionResult,
         data: {
             questionIndex: game.currentQuestion,
             correctIndex: game.getCorrectAnswer(),
             playerResults: playerResults
             },
-        "id": 0
-        }
+        id: 0
+    }
 }

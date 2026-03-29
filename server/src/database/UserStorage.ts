@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { RegData, User } from "../types";
 import type { WebSocket } from 'ws';
+import { UserNotFound } from "../utils/errors";
 
 export class UserStorage {
     storage: User[] = [];
@@ -14,7 +15,6 @@ export class UserStorage {
         }
 
         this.storage.push(user);
-
         return user;
     }
 
@@ -22,8 +22,9 @@ export class UserStorage {
         const user = this.storage.find(user => user.ws === socket)
 
         if (!user) {
-            throw Error('User is not found');
+            throw new UserNotFound();
         }
+
         return user;
     }
 
@@ -31,13 +32,13 @@ export class UserStorage {
         const user = this.storage.find(user => user.index === id)
 
         if (!user) {
-            throw Error('User is not found');
+            throw new UserNotFound();
         }
 
         return user;
     }
 
-    getUserByData(data: RegData): User | undefined {
-        return this.storage.find(user => user.name === data.name && user.password === data.password);
+    getUserByName(name: string): User | undefined {
+        return this.storage.find(user => user.name === name);
     }
 }

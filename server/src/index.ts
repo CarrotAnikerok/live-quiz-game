@@ -1,13 +1,14 @@
 import { WebSocketServer } from 'ws';
-import { Game, WSMessage } from './types';
+import { WSMessage } from './types';
 import { registerPlayer } from './Commands/player';
 import { getCreateGameAnswer, getJoinGameAnswers, getUpdatePlayersAnswer} from './Commands/gameManagement';
 import { getNextQuestionAnswer, getQuestionResult, getStartGameAnswer, getSubmitAnswer } from './Commands/gamePlay';
-import { getGameByCode, getGameById, getUserById, leaveGame } from './utils/utils'
+import { getErrorAnswer, getGameByCode, getGameById, getUserById, leaveGame } from './utils/utils'
 import { QuestionGame } from './database/QuestionGame';
+import { MILLISECONDS_IN_SECOND, requestTypes, SHOW_RESULT_TIME } from './utils/constants';
+import { GameNotFound } from './utils/errors';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
-const showResultsTime = 5000;
 
 // WebSocket server
 const wss = new WebSocketServer({ port: PORT });
@@ -20,65 +21,60 @@ wss.on('connection', socket => {
         let game: QuestionGame;
 
         switch(messageParsed.type) {
-            case 'reg':
+            case requestTypes.registration:
                 answer = registerPlayer(messageParsed.data, socket);
                 socket.send(JSON.stringify(answer));
                 break;
-            case 'create_game':
+            case requestTypes.createGame:
                 answer = getCreateGameAnswer(messageParsed.data, socket);
                 socket.send(JSON.stringify(answer));
                 break;
-            case 'join_game':
-                const answers: WSMessage[] = getJoinGameAnswers(messageParsed.data, socket);
-                answer = answers[0];
-                socket.send(JSON.stringify(answer));
+            case requestTypes.joinGame:
+                try {
+                    const answers: WSMessage[] = getJoinGameAnswers(messageParsed.data, socket);
+                    answer = answers[0];
+                    socket.send(JSON.stringify(answer));
 
-                game = getGameByCode(messageParsed.data);
-                // это бы сократить
-                const host = getUserById(game.hostId);
-                host?.ws.send(JSON.stringify(answers[1]));
-                host?.ws.send(JSON.stringify(getUpdatePlayersAnswer(game.players)));
-
-                game.players.forEach(player => {
-                    player.ws.send(JSON.stringify(answers[1]));
-                    player.ws.send(JSON.stringify(getUpdatePlayersAnswer(game.players)));
-                })
+                    game = getGameByCode(messageParsed.data);
+                    broadcastToAllInGame(game, answers[1]);
+                    broadcastToAllInGame(game, getUpdatePlayersAnswer(game.players));
+                } catch (e){
+                    if (e instanceof GameNotFound) {
+                        answer = getErrorAnswer(requestTypes.registration, e.name);
+                        socket.send(JSON.stringify(answer));
+                    }
+                }
                 break;
-            case 'start_game':
+            case requestTypes.startGame:
                 game = getGameById(messageParsed.data.gameId);
                 answer = getStartGameAnswer(game);
 
                 socket.send(JSON.stringify(answer));
-                game.questionTimer = setTimerForQuestion(game);
 
+                game.questionTimer = setTimerForQuestion(game);
                 game.players.forEach(player => {
                     player.ws.send(JSON.stringify(answer));
                 })
-
                 break;
-            case 'answer': 
+            case requestTypes.playerAnswer: 
                 answer = getSubmitAnswer(messageParsed.data, socket);
                 socket.send(JSON.stringify(answer));
-                game = getGameById(messageParsed.data.gameId);
 
+                game = getGameById(messageParsed.data.gameId);
                 if (game.isAllAnswered()) {
                     clearTimeout(game.questionTimer);
                     sendQuestionResult(game);
-                }      
+                }    
+                break;  
         }
     })
 
     socket.on('close', () => {
         console.log(`Client DISCONNECTED. Total clients: ${wss.clients.size}`);
-        const runningGame: Game | undefined = leaveGame(socket);
+        const runningGame: QuestionGame | undefined = leaveGame(socket);
 
         if (runningGame) {
-            const host = getUserById(runningGame.hostId);
-            host?.ws.send(JSON.stringify(getUpdatePlayersAnswer(runningGame.players)));
-            
-            runningGame.players.forEach(player => {
-                player.ws.send(JSON.stringify(getUpdatePlayersAnswer(runningGame.players)));
-            });
+            broadcastToAllInGame(runningGame, getUpdatePlayersAnswer(runningGame.players))
         }
     })
 })
@@ -86,17 +82,11 @@ wss.on('connection', socket => {
 function setTimerForQuestion(game: QuestionGame) {
     return setTimeout(() => {
         sendQuestionResult(game);
-    }, game.questions[game.currentQuestion].timeLimitSec * 1000 + 1000)
+    }, game.questions[game.currentQuestion].timeLimitSec * MILLISECONDS_IN_SECOND + MILLISECONDS_IN_SECOND)
 }
 
 function sendQuestionResult(game: QuestionGame) {
-    const questionResult = JSON.stringify(getQuestionResult(game));
-    const host = getUserById(game.hostId);
-
-    host?.ws.send(questionResult);
-    game.players.forEach(player => {
-        player.ws.send(questionResult)
-    })
+    broadcastToAllInGame(game, getQuestionResult(game));
 
     setTimeout(() => {
         const nextQuestionAnswer = getNextQuestionAnswer(game);
@@ -105,9 +95,16 @@ function sendQuestionResult(game: QuestionGame) {
                 game.questionTimer = setTimerForQuestion(game);
             }
 
-        host?.ws.send(JSON.stringify(nextQuestionAnswer));
-        game.players.forEach(player => {
-            player.ws.send(JSON.stringify(nextQuestionAnswer));
-        })
-    }, showResultsTime)
+        broadcastToAllInGame(game, nextQuestionAnswer);
+    }, SHOW_RESULT_TIME)
+}
+
+function broadcastToAllInGame(game: QuestionGame, answer: WSMessage) {
+    const message = JSON.stringify(answer);
+    const host = getUserById(game.hostId);
+
+    host?.ws.send(message);
+    game.players.forEach(player => {
+        player.ws.send(message);
+    })
 }
