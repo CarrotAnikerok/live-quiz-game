@@ -4,7 +4,7 @@ export interface Player {
   name: string;
   index: string;
   score: number;
-  ws?: WebSocket;
+  ws: WebSocket;
   hasAnswered?: boolean;
   answerTime?: number;
   answeredCorrectly?: boolean;
@@ -34,7 +34,7 @@ export interface User {
   name: string;
   password: string;
   index: string;
-  ws?: WebSocket;
+  ws: WebSocket;
 }
 
 export interface WSMessage {
